@@ -152,10 +152,18 @@ int main()
 			calcGradients(Mat(img_32fc3, roi), Mat(img_dx_32f, roi),
 				Mat(img_dy_32f, roi), Mat(img_mag_32f, roi), Mat(img_ori_32f, roi));
 
+			/*imshow("ori_bg", bg_ori_32f);
+			imshow("ori_fg", img_ori_32f);
+			Mat diff_ori_ffs;
+			absdiff(img_ori_32f, bg_ori_32f, diff_ori_ffs);
+			threshold(diff_ori_ffs, diff_ori_ffs, 0.75, 255, CV_8U);
+			imshow("ori_diff", Mat(diff_ori_ffs, roi));
+			waitKey(1000000);*/
+
 			// Detect shadows
 			detectShadows(Mat(img_lab_8u3c, roi), Mat(bg_lab_8u3c, roi), Mat(filtered_mask_8u, roi), 
 				Mat(img_dx_32f, roi), Mat(img_dy_32f, roi), Mat(img_mag_32f, roi), Mat(img_ori_32f, roi), 
-				Mat(bg_dx_32f, roi), Mat(bg_dy_32f, roi), Mat(bg_mag_32f, roi), Mat(img_ori_32f, roi));
+				Mat(bg_dx_32f, roi), Mat(bg_dy_32f, roi), Mat(bg_mag_32f, roi), Mat(img_ori_32f, roi), roi);
 
 		}
 		components.clear();

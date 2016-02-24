@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "iostream"
 
 
 
@@ -62,9 +63,17 @@ void calcGradients(Mat& img, Mat& dx, Mat& dy, Mat& mag, Mat& ori)
 			mag.at<float>(row, col) = sqrtf(dy.at<float>(row, col)*dy.at<float>(row, col) + dx.at<float>(row, col)*dx.at<float>(row, col));
 
 			// ori
+
+			
+			/*
 			ori.at<float>(row, col) = atan2(dy.at<float>(row, col), dx.at<float>(row, col));
 			if (ori.at<float>(row, col) < 0)
 				ori.at<float>(row, col) += (float)CV_PI * 2;
+			*/
+			
+			// EXPERIMENTO DE ORIENTACAO CALCULADO COM FASTATAN2 DO OPENCV EM GRAUS
+			ori.at<float>(row, col) = fastAtan2(dy.at<float>(row, col), dx.at<float>(row, col)) / 90;
+			//cout << ori.at<float>(row, col) << endl;
 		}
 	}
 }
