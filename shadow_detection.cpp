@@ -4,7 +4,16 @@
 #define WIDTH 960
 #define HEIGHT 540
 
+#define TEXTURE_TEST_THRESHOLD 0.5f
+
 Mat deltaP(Size(WIDTH, HEIGHT), CV_32FC1);
+Mat windowAvgDiff(Size(WIDTH, HEIGHT), CV_32FC1);
+
+Mat blur_buffer1 = Mat(Size(WIDTH, HEIGHT), CV_8UC1);
+Mat blur_buffer2 = Mat(Size(WIDTH, HEIGHT), CV_8UC1);
+
+Mat non_zero_in_rows_buffer = Mat(Size(WIDTH, HEIGHT), CV_32FC1);
+Mat non_zero_in_windows_buffer = Mat(Size(WIDTH, HEIGHT), CV_32FC1);
 
 bool testLab(Vec3b img, Vec3b bg)
 {
@@ -102,6 +111,59 @@ void computeDeltaP(Mat& img_dx, Mat& img_dy, Mat& img_mag, Mat& img_ori, Mat& bg
 	}
 }
 
+void countNonZeroInRows(Mat& in, Mat& out, int width)
+{
+	int center_offset = width / 2;
+	for (int row = 0; row < in.rows; ++row)
+	{
+		// fil left and right with 0s
+		for (int col = 0; col < center_offset; ++col)
+		{
+			out.at<float>(row, col) = 0;
+			out.at<float>(row, in.cols - 1 - col) = 0;
+		}
+
+		float count = 0;
+		for (int col = 0; col < width; col++)
+		{
+			if (in.at<float>(row, col) > 0)
+				count++;
+			
+		}
+		out.at<float>(row, center_offset) = count;
+
+		for (int col = center_offset + 1; col < in.cols - center_offset; col++)
+		{
+			if (in.at<float>(row, col - center_offset - 1) > 0)
+				count--;
+			if (in.at<float>(row, col + center_offset) > 0)
+				count++;
+			out.at<float>(row, col) = count;
+		}
+	}
+}
+
+void computeWindowAvgDiff(Mat& input, Mat& output)
+{
+	// Averages the value deltaP for each pixel looking at neighbour pixels
+
+	Mat blur1(blur_buffer1, Rect(0, 0, input.cols, input.rows));
+	Mat blur2(blur_buffer1, Rect(0, 0, input.cols, input.rows));
+	input.convertTo(blur1, CV_8U, 255);
+	boxFilter(blur1, blur2, CV_8U, Size(TEXTURE_WINDOW_WIDTH, TEXTURE_WINDOW_WIDTH));
+	blur2.convertTo(output, CV_32F, 1.0 / 255.0*TEXTURE_WINDOW_WIDTH*TEXTURE_WINDOW_WIDTH);
+
+	Mat non_zero_in_rows(non_zero_in_rows_buffer, Rect(0, 0, input.cols, input.rows));
+	countNonZeroInRows(input, non_zero_in_rows, TEXTURE_WINDOW_WIDTH);
+
+	// We can now use another box filter to add the values vertically.
+	Mat non_zero_in_windows(non_zero_in_windows_buffer, Rect(0, 0, input.cols, input.rows));
+	boxFilter(non_zero_in_rows, non_zero_in_windows, CV_32F, Size(1, TEXTURE_WINDOW_WIDTH), Point(-1, -1), false);
+
+	divide(output, non_zero_in_windows, output);
+
+}
+
 bool myTestTexture(Mat& window)
 {
 	float diff = 0;
@@ -138,9 +200,12 @@ void detectShadows(Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& img_dy, Mat& im
 	int cols = s.width;
 
 	computeDeltaP(img_dx, img_dy, img_mag, img_ori, bg_dx, bg_dy, bg_mag, bg_ori, Mat(deltaP, roi));
+	computeWindowAvgDiff(Mat(deltaP, roi), Mat(windowAvgDiff, roi));
 
-	/*imshow("deltaP", deltaP);
-	waitKey(1000000);*/
+	imshow("deltaP", deltaP);
+	imshow("windowAvgDiff", windowAvgDiff); // ESTE RESULTADO ESTA CERTO???
+	waitKey(100000);
+
 
 	// for each pixel
 	for (int j = 0; j < rows; ++j) //270
@@ -153,25 +218,18 @@ void detectShadows(Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& img_dy, Mat& im
 				// Teste L*ab, se falso == provavelmente eh carro
 				if (testLab(src.at<Vec3b>(j, i), bg.at<Vec3b>(j, i)))
 				{
+					// Should be a magnitude test here
 					//if (testGradient(img_mag.at<float>(j, i), img_ori.at<float>(j, i), bg_mag.at<float>(j, i), bg_ori.at<float>(j, i)))
 					{
 						
-						// Here we compare texture patches
 
-						if (j < (TEXTURE_WINDOW_WIDTH / 2) || j >= rows - TEXTURE_WINDOW_WIDTH / 2 ||
-							i < (TEXTURE_WINDOW_WIDTH / 2) || i >= cols - TEXTURE_WINDOW_WIDTH / 2)
-							mask.at<uchar>(j, i) = 150;
-						else
-						{
-							mask.at<uchar>(j, i) = 0;
-							/*Mat texture_window(deltaP, Rect(i - TEXTURE_WINDOW_WIDTH / 2, j - TEXTURE_WINDOW_WIDTH / 2, TEXTURE_WINDOW_WIDTH, TEXTURE_WINDOW_WIDTH));
+						// AQUI VAI O TESTE DA MEDIA DA JANELA
+						// if (windowAvgDiff.at<float>(j, i) < 0.5f)
+						//     ...
 
-							if (myTestTexture(texture_window))
-								mask.at<uchar>(j, i) = 150;*/
 
-						}
 						
-						//mask.at<uchar>(j, i) = 150;
+						mask.at<uchar>(j, i) = 150; // remove this later!!
 
 					}
 				}
