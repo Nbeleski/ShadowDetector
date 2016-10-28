@@ -24,6 +24,9 @@
     <ClCompile Include="shadow_detection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vibe.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source.h">
@@ -33,6 +36,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="shadow_detection.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vibe.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

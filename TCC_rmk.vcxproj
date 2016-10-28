@@ -85,11 +85,13 @@
     <ClCompile Include="shadow_detection.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="vibe.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shadow_detection.h" />
     <ClInclude Include="Source.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="vibe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

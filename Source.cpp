@@ -17,6 +17,7 @@ Mat img_32fc3(Size(WIDTH, HEIGHT), CV_32FC3);
 
 // componentes conexos
 vector <Rect> components;
+RotatedRect r;
 
 // First background model generation ---------------------------------/
 
@@ -111,6 +112,10 @@ int main()
 	bg_8u3c.convertTo(bg_32fc3, CV_32FC3, 1 / 255.0);
 	calcGradients(bg_32fc3, bg_dx_32f, bg_dy_32f, bg_mag_32f, bg_ori_32f);
 
+	initBackground(bg_32fc3);
+	Mat vibe_mask(Size(WIDTH, HEIGHT), CV_8U);
+	Mat vibe_filtered(Size(WIDTH, HEIGHT), CV_8U);
+
 	// Start of the real-time analysis (after initial bg generation) --------------------------/
 	while (true)
 	{
@@ -130,17 +135,31 @@ int main()
 		img_8u3c.convertTo(img_32fc3, CV_32FC3, 1 / 255.0);
 
 		// Bloco para gerar mascara - usado no lugar do Vibe para debug -----------------------/
-		Mat img_8u_gray, bg_8u_gray;
-		cvtColor(img_8u3c, img_8u_gray, CV_BGR2GRAY);
-		cvtColor(bg_8u3c, bg_8u_gray, CV_BGR2GRAY);
-		absdiff(img_8u_gray, bg_8u_gray, diff);
-		threshold(diff, mask_8u, 50, 10, CV_8U);
-		morphologyEx(mask_8u, mask_8u, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(7, 7)));
-		//GaussianBlur(mask_8u, mask_8u, Size(3, 3), 0);
+		
+		if (!VIBE)
+		{
 
-		filtered_mask_8u = media_binary(mask_8u, 3, 10);
+			Mat img_8u_gray, bg_8u_gray;
+			cvtColor(img_8u3c, img_8u_gray, CV_BGR2GRAY);
+			cvtColor(bg_8u3c, bg_8u_gray, CV_BGR2GRAY);
+			absdiff(img_8u_gray, bg_8u_gray, diff);
+			threshold(diff, mask_8u, 50, 10, CV_8U);
+			morphologyEx(mask_8u, mask_8u, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+			//GaussianBlur(mask_8u, mask_8u, Size(3, 3), 0);
 
+			filtered_mask_8u = media_binary(mask_8u, 3, 10);
+		}
+		else
+		{
+			// Vibe -------------------------------------------------------------------------------/
+			vibe(img_32fc3, vibe_mask);
+			morphologyEx(vibe_mask, vibe_mask, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+			filtered_mask_8u = media_binary(vibe_mask, 3, 10);
+		}
 		// ------------------------------------------------------------------------------------/
+
+		//findConnectedComponents(filtered_mask_8u, components);
+		//components.clear();
 
 		findConnectedComponents(filtered_mask_8u, components);
 
@@ -161,7 +180,7 @@ int main()
 			waitKey(1000000);*/
 
 			// Detect shadows
-			detectShadows(Mat(img_lab_8u3c, roi), Mat(bg_lab_8u3c, roi), Mat(filtered_mask_8u, roi), 
+			detectShadows(Mat(img_8u3c, roi), Mat(img_lab_8u3c, roi), Mat(bg_lab_8u3c, roi), Mat(filtered_mask_8u, roi),
 				Mat(img_dx_32f, roi), Mat(img_dy_32f, roi), Mat(img_mag_32f, roi), Mat(img_ori_32f, roi), 
 				Mat(bg_dx_32f, roi), Mat(bg_dy_32f, roi), Mat(bg_mag_32f, roi), Mat(img_ori_32f, roi), roi);
 
@@ -169,8 +188,13 @@ int main()
 		components.clear();
 
 
-		imshow("mask", filtered_mask_8u);
+		//imshow("mask", filtered_mask_8u);
+		//imshow("vibe", vibe_filtered);
+
 		//imshow("img", img_8u3c);
+
+		imshow("final", img_8u3c);
+		waitKey(10000000);
 
 		switch (waitKey(1))	{
 		case ESC_KEY:

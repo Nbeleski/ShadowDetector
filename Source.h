@@ -5,6 +5,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/video/tracking.hpp"
 
+#include "vibe.h"
 #include "utils.h"
 #include "shadow_detection.h"
 
@@ -17,6 +18,8 @@
 
 #define INTERVAL 25
 #define SAMPLES 11
+
+#define VIBE 0
 
 using namespace std;
 using namespace cv;
