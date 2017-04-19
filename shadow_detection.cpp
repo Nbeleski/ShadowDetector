@@ -406,7 +406,7 @@ RotatedRect refineEllipse(Mat& mask, Mat& initial_mask)
 
 Mat output(Size(WIDTH, HEIGHT), CV_8UC1);
 
-void detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& img_dy, Mat& img_mag,
+RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& img_dy, Mat& img_mag,
 	Mat& img_ori, Mat& bg_dx, Mat& bg_dy, Mat& bg_mag, Mat& bg_ori, Rect roi)
 {
 	Size s = src.size();
@@ -463,13 +463,15 @@ void detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& i
 
 		dilate(output, output, getStructuringElement(cv::MORPH_ELLIPSE, Size(5, 5)));
 
-		Point2f vtx[4];
+		/*Point2f vtx[4];
 		r.points(vtx);
 		for (int j = 0; j < 4; j++)
 			line(original, vtx[j], vtx[(j + 1) % 4], Scalar(0, 255, 255), 2);
 
-		ellipse(original, r, Scalar(0, 255, 0), 2);
+		ellipse(original, r, Scalar(0, 255, 0), 2);*/
 	}
+
+	return r;
 
 	imshow("after refine", Mat(output, roi));
 	//waitKey(10000000);

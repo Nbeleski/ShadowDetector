@@ -71,7 +71,13 @@ int main()
 			break;
 		}
 
-		img_8u3c = resizeFixed(src);
+		if (RESIZE)
+			img_8u3c = resizeFixed(src);
+		else
+			src.copyTo(img_8u3c);
+
+		// Name of images saved:
+		// String save = "1.jpg";
 
 		if (cont_t % INTERVAL == 0)
 		{
@@ -83,11 +89,14 @@ int main()
 				}
 			}
 
+			// Saving the used frames here:
+			/*save[0] = cont_n + 97;
+			imwrite(save, img_8u3c);*/
+
 			cont_n++;
 		}
 		cont_t++;
 	}
-
 
 	for (int j = 0; j < HEIGHT; j++)
 	{
@@ -105,6 +114,9 @@ int main()
 	// At this point we have an aproximation of the background
 	// This is used to start the samples in the Vibe algorithm
 	// imshow("Bg gerado", bg_8u3c);
+	
+	//imwrite("bg.jpg", bg_8u3c);
+	//exit(1);
 
 	cvtColor(bg_8u3c, bg_lab_8u3c, CV_BGR2Lab);
 
@@ -127,8 +139,25 @@ int main()
 			return -1;
 		}
 
-		img_8u3c = resizeFixed(src);
-		// In this point we have the Mat image holding
+		if (RESIZE)
+			img_8u3c = resizeFixed(src);
+		else
+			src.copyTo(img_8u3c);
+
+		//// TCC : print examples
+		//Mat print_gray, print_lab, print_float;
+		//cvtColor(img_8u3c, print_gray, CV_BGR2GRAY);
+		//cvtColor(img_8u3c, print_lab, CV_BGR2Lab);
+		//bg_8u3c.convertTo(print_float, CV_32FC3, 1 / 255.0);
+
+		//imwrite("1original.jpg", src);
+		//imwrite("1print_gray.jpg", print_gray);
+		//imwrite("1print_lab.jpg", print_lab);
+		//imwrite("1print_float.jpg", print_float);
+
+		//exit(1);
+
+		// In this point we (may)have the Mat image holding
 		// a smaller version of the actual frame.
 
 		cvtColor(img_8u3c, img_lab_8u3c, CV_BGR2Lab);
@@ -180,9 +209,26 @@ int main()
 			waitKey(1000000);*/
 
 			// Detect shadows
-			detectShadows(Mat(img_8u3c, roi), Mat(img_lab_8u3c, roi), Mat(bg_lab_8u3c, roi), Mat(filtered_mask_8u, roi),
+			r = detectShadows(Mat(img_8u3c, roi), Mat(img_lab_8u3c, roi), Mat(bg_lab_8u3c, roi), Mat(filtered_mask_8u, roi),
 				Mat(img_dx_32f, roi), Mat(img_dy_32f, roi), Mat(img_mag_32f, roi), Mat(img_ori_32f, roi), 
 				Mat(bg_dx_32f, roi), Mat(bg_dy_32f, roi), Mat(bg_mag_32f, roi), Mat(img_ori_32f, roi), roi);
+
+			Point2f vtx[4];
+			r.points(vtx);
+
+			// Move to the correct area of the original image.
+			vtx[0].x += roi.x; vtx[0].y += roi.y;
+			vtx[1].x += roi.x; vtx[1].y += roi.y;
+			vtx[2].x += roi.x; vtx[2].y += roi.y;
+			vtx[3].x += roi.x; vtx[3].y += roi.y;
+
+			r.center.x += roi.x;
+			r.center.y += roi.y;
+
+			for (int j = 0; j < 4; j++)
+				line(img_8u3c, vtx[j], vtx[(j + 1) % 4], Scalar(0, 255, 255), 2);
+
+			ellipse(img_8u3c, r, Scalar(0, 255, 0), 2);
 
 		}
 		components.clear();

@@ -2,6 +2,8 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/video/tracking.hpp"
 
+
+// Use 11 for TCC, ~5 for Sanin
 #define TEXTURE_WINDOW_WIDTH 11
 
 using namespace std;
@@ -21,4 +23,4 @@ Mat takeCandidateCoords(Mat& mask);
 Mat takeForegroundCoords(Mat& mask);
 RotatedRect refineEllipse(Mat& mask, Mat& out);
 
-void detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& img_dy, Mat& img_mag, Mat& img_ori, Mat& bg_dx, Mat& bg_dy, Mat& bg_mag, Mat& bg_ori, Rect roi);
+RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx, Mat& img_dy, Mat& img_mag, Mat& img_ori, Mat& bg_dx, Mat& bg_dy, Mat& bg_mag, Mat& bg_ori, Rect roi);

@@ -9,8 +9,14 @@
 #include "utils.h"
 #include "shadow_detection.h"
 
+// Our  video  is  test2.avi, W:960 H:540
+// Sanin video 1 is vid1.avi, W:320 H:240
+// Sanin video 2 is vid2.avi, W:320 H:240
+
 #define WIDTH 960
 #define HEIGHT 540
+
+#define RESIZE true
 
 #define FILENAME "test2.avi"
 #define WINDOW_TITLE "Output"
