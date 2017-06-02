@@ -1,0 +1,7 @@
+referência: 54979 - calculado: 52290 - intesec: 48534 - uniao: 58735 - intersec/uniao: 0.826322
+referência: 40400 - calculado: 40209 - intesec: 0 - uniao: 80609 - intersec/uniao: 0
+referência: 43958 - calculado: 44666 - intesec: 38440 - uniao: 50184 - intersec/uniao: 0.765981
+referência: 33341 - calculado: 33709 - intesec: 30149 - uniao: 36901 - intersec/uniao: 0.817024
+referência: 35681 - calculado: 48288 - intesec: 34247 - uniao: 49722 - intersec/uniao: 0.68877
+referência: 36061 - calculado: 37129 - intesec: 34243 - uniao: 38947 - intersec/uniao: 0.87922
+referência: 39234 - calculado: 43779 - intesec: 38054 - uniao: 44959 - intersec/uniao: 0.846416

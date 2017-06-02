@@ -93,9 +93,6 @@ float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float 
 	// Union = (ROI + Mask) - (Intersection(ROI, Mask))
 	int dUnion = (dBase + dMask) - dIntersec;
 
-	// TODO: Take care... Division by zero...
-	return float(dIntersec) / float(dUnion);
-	
 	cout << "referência: ";
 	cout << dMask << " - ";
 	cout << "calculado: ";
@@ -105,7 +102,10 @@ float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float 
 	cout << "uniao: ";
 	cout << dUnion << " - ";
 	cout << "intersec/uniao: ";
-	cout << (float(dIntersec) / float(dUnion)) << " - ";
+	cout << (float(dIntersec) / float(dUnion)) << endl;
+
+	// TODO: Take care... Division by zero...
+	return float(dIntersec) / float(dUnion);
 }
 
 // -------------------------------------------------------------------/
@@ -114,7 +114,12 @@ int main()
 {
 
 	// File for results
-	freopen("results.txt", "a", stdout);
+	FILE* file;
+	file = freopen("results.txt", "w+", stdout);
+	if (file == NULL)
+	{
+		exit(-1);
+	}
 
 	// Prepare the reference ellipses to compare ---------------------/
 	if (COMPARE)
