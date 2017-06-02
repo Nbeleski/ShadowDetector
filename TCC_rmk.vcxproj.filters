@@ -42,4 +42,8 @@
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="frames.txt" />
+    <Text Include="results.txt" />
+  </ItemGroup>
 </Project>

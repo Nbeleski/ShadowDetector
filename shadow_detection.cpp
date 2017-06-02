@@ -305,6 +305,10 @@ RotatedRect refineEllipse(Mat& mask, Mat& initial_mask)
 	// fg_points.cols is the number of foreground pixels ; "for every foregroud pixel"
 	for (int iteration = 0; iteration < ELLIPSE_REFINE_ITERATIONS && inside < fg_points.cols; iteration++)
 	{ 
+
+		//imshow("partial mask maha", mask);
+		//waitKey(10000);
+
 		// atualiza os pontos
 		fg_points = takeForegroundCoords(mask);
 
@@ -435,7 +439,12 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 				// Teste L*ab, se falso == provavelmente eh carro
 				if (testLab(src.at<Vec3b>(j, i), bg.at<Vec3b>(j, i)))
 				{
-					// Should be a magnitude test here
+					//delete below
+					//mask.at<uchar>(j, i) = 255;
+					//continue;
+					//delete above
+
+					// Should be a gradient magnitude test here
 					//if (testGradient(img_mag.at<float>(j, i), img_ori.at<float>(j, i), bg_mag.at<float>(j, i), bg_ori.at<float>(j, i)))
 					{
 						
@@ -453,7 +462,11 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 	mask.copyTo(output(roi)); // copy to output at position roi
 
 	imshow("before refine", mask);
-	//waitKey(100000);
+	//char next = waitKey(100000);
+	//if (next == 97)
+	//{
+	//	imwrite("RENOMEAR.jpg", mask);
+	//}
 	
 	// Refine using ellipse
 	RotatedRect r;

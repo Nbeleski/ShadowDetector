@@ -25,7 +25,10 @@
 #define INTERVAL 25
 #define SAMPLES 11
 
+#define COMPARE 1
 #define VIBE 0
 
 using namespace std;
 using namespace cv;
+
+float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float angle, Mat &resp);

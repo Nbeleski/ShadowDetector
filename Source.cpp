@@ -1,6 +1,12 @@
 #include "Source.h"
 
+#include "fstream"
+#include "sstream"
+#include "string"
+
 // Generic declarations ----------------------------------------------/
+
+int n_frame = 1;
 
 Mat src;
 Mat img_8u3c;
@@ -39,9 +45,118 @@ Mat img_dy_32f(Size(WIDTH, HEIGHT), CV_32FC1);
 Mat img_mag_32f(Size(WIDTH, HEIGHT), CV_32FC1);
 Mat img_ori_32f(Size(WIDTH, HEIGHT), CV_32FC1);
 
+// Declarações dos testes de eficácia --------------------------------/
+
+class ReferenceValue
+{
+public:
+	int frame;
+	int mid_x;
+	int mid_y;
+	float dist_a1;
+	float dist_a2;
+	float angle;
+
+	void set_values(int, float, float, float);
+};
+
+void ReferenceValue::set_values(int f, float a1, float a2, float ang)
+{
+	frame = f;
+	dist_a1 = a1;
+	dist_a2 = a2;
+	angle = ang;
+}
+
+int n_frame_ref = 0;
+vector<ReferenceValue> lista_elipses;
+
+float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float angle, Mat &resp)
+{
+	Mat imgMask = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
+	ellipse(imgMask, r, 255, CV_FILLED);
+
+	Mat imgRoi = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
+	ellipse(imgRoi, center, Size(axis1, axis2), angle, 0, 360, 255, CV_FILLED);
+
+	bitwise_and(imgMask, imgRoi, resp);
+
+	// ROI
+	int dBase = countNonZero(imgRoi);
+
+	// Mask = Referencia
+	int dMask = countNonZero(imgMask);
+
+	// Intersection
+	int dIntersec = countNonZero(resp);
+
+	// Union = (ROI + Mask) - (Intersection(ROI, Mask))
+	int dUnion = (dBase + dMask) - dIntersec;
+
+	// TODO: Take care... Division by zero...
+	return float(dIntersec) / float(dUnion);
+	
+	cout << "referência: ";
+	cout << dMask << " - ";
+	cout << "calculado: ";
+	cout << dBase << " - ";
+	cout << "intesec: ";
+	cout << dIntersec << " - ";
+	cout << "uniao: ";
+	cout << dUnion << " - ";
+	cout << "intersec/uniao: ";
+	cout << (float(dIntersec) / float(dUnion)) << " - ";
+}
+
+// -------------------------------------------------------------------/
 
 int main()
 {
+
+	// File for results
+	freopen("results.txt", "a", stdout);
+
+	// Prepare the reference ellipses to compare ---------------------/
+	if (COMPARE)
+	{
+		ifstream infile("frames.txt"); // ONDE PEGA OS FRAMES SALVOS PRA DESENHAR
+
+		// GUARDA TODOS OS QUADROS QUE TEM QUE DESENHAR EM UM VECTOR
+		//vector<ReferenceFrame> validation;
+		string line;
+		string buf;
+		while (std::getline(infile, line))
+		{
+			//v[cont++] = stof(buf);
+			//cout << v[cont++] << endl;
+
+			//cout << "line: " << line << endl;
+			stringstream ss(line); // Insert the string into a stream
+
+			vector<string> tokens; // Create vector to hold our words
+			while (ss >> buf) {
+				//cout << cont++ << " : " << buf << endl;
+				tokens.push_back(buf);
+			}
+
+			ReferenceValue temp;
+			//temp.set_values((int)v[0], v[1], v[2], v[3]);
+
+			temp.frame = stoi(tokens[0]);
+			temp.mid_x = stoi(tokens[1]);
+			temp.mid_y = stoi(tokens[2]);
+			temp.dist_a1 = stof(tokens[3]);
+			temp.dist_a2 = stof(tokens[4]);
+			temp.angle = stof(tokens[5]);
+
+			tokens.clear();
+
+			lista_elipses.push_back(temp);
+		}
+
+	}
+	// ---------------------------------------------------------------/
+
 
 	// Opening video and testing integrity ---------------------------/
 
@@ -173,10 +288,14 @@ int main()
 			cvtColor(bg_8u3c, bg_8u_gray, CV_BGR2GRAY);
 			absdiff(img_8u_gray, bg_8u_gray, diff);
 			threshold(diff, mask_8u, 50, 10, CV_8U);
+
+
 			morphologyEx(mask_8u, mask_8u, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
 			//GaussianBlur(mask_8u, mask_8u, Size(3, 3), 0);
 
 			filtered_mask_8u = media_binary(mask_8u, 3, 10);
+
+			
 		}
 		else
 		{
@@ -225,20 +344,35 @@ int main()
 			r.center.x += roi.x;
 			r.center.y += roi.y;
 
-			for (int j = 0; j < 4; j++)
-				line(img_8u3c, vtx[j], vtx[(j + 1) % 4], Scalar(0, 255, 255), 2);
+			//imshow("quadro", Mat(img_8u3c, roi));
+			if (n_frame == 2231)
+				imwrite("RENOMEAR.jpg", Mat(img_8u3c, roi));
 
-			ellipse(img_8u3c, r, Scalar(0, 255, 0), 2);
+			//for (int j = 0; j < 4; j++)
+				//line(img_8u3c, vtx[j], vtx[(j + 1) % 4], Scalar(0, 255, 255), 2);
+
+			ellipse(img_8u3c, r, Scalar(0, 255, 0), 2); //Gerando a elispe calculada
 
 		}
 		components.clear();
 
+		while (lista_elipses[n_frame_ref].frame - 251 == n_frame) // Gerando a elipse de referencia
+		{
+			//cout << "frame: " << n_frame << " - values: " << lista_elipses[n_frame_ref].frame << " " << lista_elipses[n_frame_ref].dist_a1 << " " << lista_elipses[n_frame_ref].dist_a2 << " " << lista_elipses[n_frame_ref].angle << endl;
+			ellipse(img_8u3c, Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), Size(lista_elipses[n_frame_ref].dist_a1, lista_elipses[n_frame_ref].dist_a2), lista_elipses[n_frame_ref].angle, 0, 360, Scalar(0, 0, 255), 2);
+
+			Mat intersec = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
+			calcAccuracy(r, Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), lista_elipses[n_frame_ref].dist_a1, lista_elipses[n_frame_ref].dist_a2, lista_elipses[n_frame_ref].angle, intersec);
+			imshow("intersec", intersec);
+
+			n_frame_ref++;
+
+		}
 
 		//imshow("mask", filtered_mask_8u);
 		//imshow("vibe", vibe_filtered);
 
-		//imshow("img", img_8u3c);
-
+		putText(img_8u3c, to_string(n_frame), Point(10, 40), FONT_HERSHEY_DUPLEX, 1, Scalar(0, 255, 0), 2);
 		imshow("final", img_8u3c);
 		waitKey(10000000);
 
@@ -246,6 +380,7 @@ int main()
 		case ESC_KEY:
 			return 0;
 		}
+		n_frame++;
 	}
 
 	capture.release();
