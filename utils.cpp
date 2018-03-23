@@ -1,8 +1,6 @@
 #include "utils.h"
 #include "iostream"
 
-
-
 // Compare which Vec3f is larger
 bool Compare_Vec3f(Vec3f v1, Vec3f v2)
 {
