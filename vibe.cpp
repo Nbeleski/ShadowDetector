@@ -119,3 +119,11 @@ void vibe(Mat src, Mat& dst)
 
 	segMap.copyTo(dst);
 }
+
+void showAllBackgrounds()
+{
+	for (int i = 0; i < N; ++i)
+	{
+		imshow("sample_" + to_string(i), samples[i]);
+	}
+}

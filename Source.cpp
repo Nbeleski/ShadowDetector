@@ -79,6 +79,7 @@ float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float 
 	Mat imgRoi = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
 	ellipse(imgRoi, center, Size(axis1, axis2), angle, 0, 360, 255, CV_FILLED);
 
+	resp = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
 	bitwise_and(imgMask, imgRoi, resp);
 
 	// ROI
@@ -93,16 +94,21 @@ float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float 
 	// Union = (ROI + Mask) - (Intersection(ROI, Mask))
 	int dUnion = (dBase + dMask) - dIntersec;
 
-	cout << "referência: ";
-	cout << dMask << " - ";
-	cout << "calculado: ";
-	cout << dBase << " - ";
-	cout << "intesec: ";
-	cout << dIntersec << " - ";
-	cout << "uniao: ";
-	cout << dUnion << " - ";
-	cout << "intersec/uniao: ";
-	cout << (float(dIntersec) / float(dUnion)) << endl;
+	if (dIntersec > 10)
+	{
+		/*cout << "referência: ";
+		cout << dMask << " - ";
+		cout << "calculado: ";
+		cout << dBase << " - ";
+		cout << "intesec: ";
+		cout << dIntersec << " - ";
+		cout << "uniao: ";
+		cout << dUnion << " - ";
+		cout << "intersec/uniao: ";
+		cout << (float(dIntersec) / float(dUnion)) << endl;*/
+
+		cout << n_frame << "\t" << (float(dIntersec) / float(dUnion)) << endl;
+	}
 
 	// TODO: Take care... Division by zero...
 	return float(dIntersec) / float(dUnion);
@@ -110,12 +116,64 @@ float calcAccuracy(RotatedRect r, Point center, float axis1, float axis2, float 
 
 // -------------------------------------------------------------------/
 
+int partition(array<Mat, SAMPLES>& s, int p, int r, int j, int i)
+{
+	//int p = 0;
+	//int r = 10;
+	Vec3f pivot = s[r].at<Vec3f>(j, i);
+
+	while (p < r)
+	{
+		while (Compare_Vec3f(s[p].at<Vec3f>(j, i), pivot))
+			p++;
+
+		while (Compare_Vec3f(pivot, s[r].at<Vec3f>(j, i)))
+			r--;
+
+		if (s[p].at<Vec3f>(j, i)[0] == s[r].at<Vec3f>(j, i)[0] &&
+			s[p].at<Vec3f>(j, i)[1] == s[r].at<Vec3f>(j, i)[1] &&
+			s[p].at<Vec3f>(j, i)[2] == s[r].at<Vec3f>(j, i)[2])
+		{
+			p++;
+		}
+		else if (p < r)
+		{
+			Vec3f tmp = s[p].at<Vec3f>(j, i);
+			s[p].at<Vec3f>(j, i) = s[r].at<Vec3f>(j, i);
+			s[r].at<Vec3f>(j, i) = tmp;
+		}
+	}
+	return r;
+}
+
+Vec3f quickselect(array<Mat, SAMPLES>& s, int p, int r, int k, int j, int i)
+{
+	if (p == r) return s[p].at<Vec3f>(j, i);
+
+	int jota = partition(s, p, r, j, i);
+	int length = jota - p + 1;
+
+	if (length == k) return s[k].at<Vec3f>(j, i);
+	else if (k < length) return quickselect(s, p, jota - 1, k, j, i);
+	else return quickselect(s, jota + 1, r, k - length, j, i);
+}
+
+// -------------------------------------------------------------------/
+
+VideoWriter video("completo.avi", CV_FOURCC('M', 'J', 'P', 'G'), 15, Size(WIDTH, HEIGHT), true);
+
+//--------------------------------------------------------------------/
+
 int main()
 {
 
 	// File for results
 	FILE* file;
-	file = freopen("results.txt", "w+", stdout);
+	file = freopen("results.txt", "a", stdout);
+
+	// print parameters
+	cout << "Iteracoes Ellipse: " << 4 << " Mahalanobis: " << 2.2 << " Texture window size: " << 11 << endl;
+
 	if (file == NULL)
 	{
 		exit(-1);
@@ -218,6 +276,20 @@ int main()
 		cont_t++;
 	}
 
+	//cout << "CHEGANDO AQ??" << endl;
+	//for (int j = 0; j < HEIGHT; j++)
+	//{
+	//	for (int i = 0; i < WIDTH; i++)
+	//	{
+	//		cout << "done 1 time" << endl;
+	//		bg_8u3c.at<Vec3b>(j, i) = quickselect(samples, 0, 10, 6, j, i);
+	//	}
+	//}
+
+	//imshow("Bg gerado", bg_8u3c);
+	//waitKey(100000000);
+	//exit(1);
+
 	for (int j = 0; j < HEIGHT; j++)
 	{
 		for (int i = 0; i < WIDTH; i++)
@@ -226,6 +298,7 @@ int main()
 			{
 				pixel_list[c] = samples[c].at<Vec3b>(j, i);
 			}
+
 			sort(begin(pixel_list), end(pixel_list), Compare_Vec3f);
 			bg_8u3c.at<Vec3b>(j, i) = pixel_list[SAMPLES / 2 + 1];
 		}
@@ -284,7 +357,7 @@ int main()
 		img_8u3c.convertTo(img_32fc3, CV_32FC3, 1 / 255.0);
 
 		// Bloco para gerar mascara - usado no lugar do Vibe para debug -----------------------/
-		
+
 		if (!VIBE)
 		{
 
@@ -292,15 +365,12 @@ int main()
 			cvtColor(img_8u3c, img_8u_gray, CV_BGR2GRAY);
 			cvtColor(bg_8u3c, bg_8u_gray, CV_BGR2GRAY);
 			absdiff(img_8u_gray, bg_8u_gray, diff);
-			threshold(diff, mask_8u, 50, 10, CV_8U);
-
-
+			threshold(diff, mask_8u, 50, 10, CV_8U); // 50, 10 default
 			morphologyEx(mask_8u, mask_8u, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
 			//GaussianBlur(mask_8u, mask_8u, Size(3, 3), 0);
 
 			filtered_mask_8u = media_binary(mask_8u, 3, 10);
 
-			
 		}
 		else
 		{
@@ -315,6 +385,8 @@ int main()
 		//components.clear();
 
 		findConnectedComponents(filtered_mask_8u, components);
+		vector<RotatedRect> ellipses_to_test;
+
 
 		// For all connected components:
 		for (int i = 0; i < components.size(); i++)
@@ -334,7 +406,7 @@ int main()
 
 			// Detect shadows
 			r = detectShadows(Mat(img_8u3c, roi), Mat(img_lab_8u3c, roi), Mat(bg_lab_8u3c, roi), Mat(filtered_mask_8u, roi),
-				Mat(img_dx_32f, roi), Mat(img_dy_32f, roi), Mat(img_mag_32f, roi), Mat(img_ori_32f, roi), 
+				Mat(img_dx_32f, roi), Mat(img_dy_32f, roi), Mat(img_mag_32f, roi), Mat(img_ori_32f, roi),
 				Mat(bg_dx_32f, roi), Mat(bg_dy_32f, roi), Mat(bg_mag_32f, roi), Mat(img_ori_32f, roi), roi);
 
 			Point2f vtx[4];
@@ -354,24 +426,45 @@ int main()
 				imwrite("RENOMEAR.jpg", Mat(img_8u3c, roi));
 
 			//for (int j = 0; j < 4; j++)
-				//line(img_8u3c, vtx[j], vtx[(j + 1) % 4], Scalar(0, 255, 255), 2);
+			//line(img_8u3c, vtx[j], vtx[(j + 1) % 4], Scalar(0, 255, 255), 2);
 
 			ellipse(img_8u3c, r, Scalar(0, 255, 0), 2); //Gerando a elispe calculada
+
+			ellipses_to_test.push_back(r);
 
 		}
 		components.clear();
 
-		while (lista_elipses[n_frame_ref].frame - 251 == n_frame) // Gerando a elipse de referencia
+		if (COMPARE)
 		{
-			//cout << "frame: " << n_frame << " - values: " << lista_elipses[n_frame_ref].frame << " " << lista_elipses[n_frame_ref].dist_a1 << " " << lista_elipses[n_frame_ref].dist_a2 << " " << lista_elipses[n_frame_ref].angle << endl;
-			ellipse(img_8u3c, Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), Size(lista_elipses[n_frame_ref].dist_a1, lista_elipses[n_frame_ref].dist_a2), lista_elipses[n_frame_ref].angle, 0, 360, Scalar(0, 0, 255), 2);
+			float percent;
+			while (lista_elipses[n_frame_ref].frame - 251 == n_frame) // Gerando a elipse de referencia
+			{
+				//cout << "frame: " << n_frame << " - values: " << lista_elipses[n_frame_ref].frame << " " << lista_elipses[n_frame_ref].dist_a1 << " " << lista_elipses[n_frame_ref].dist_a2 << " " << lista_elipses[n_frame_ref].angle << endl;
+				//ellipse(img_8u3c, Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), Size(lista_elipses[n_frame_ref].dist_a1, lista_elipses[n_frame_ref].dist_a2), lista_elipses[n_frame_ref].angle, 0, 360, Scalar(0, 0, 255), 2);
 
-			Mat intersec = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
-			calcAccuracy(r, Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), lista_elipses[n_frame_ref].dist_a1, lista_elipses[n_frame_ref].dist_a2, lista_elipses[n_frame_ref].angle, intersec);
-			imshow("intersec", intersec);
+				Mat intersec = Mat::zeros(Size(WIDTH, HEIGHT), CV_8UC1);
 
-			n_frame_ref++;
+				for (int i = 0; i < ellipses_to_test.size(); i++)
+				{
+					percent = calcAccuracy(ellipses_to_test[i], Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), lista_elipses[n_frame_ref].dist_a1, lista_elipses[n_frame_ref].dist_a2, lista_elipses[n_frame_ref].angle, intersec);
 
+					if (percent > 0.5)
+					{
+						int approx = (int)(percent * 100);
+						//putText(img_8u3c, to_string(approx ) + "%", Point(lista_elipses[n_frame_ref].mid_x, lista_elipses[n_frame_ref].mid_y), FONT_HERSHEY_DUPLEX, 1, Scalar(0, 255, 0), 2);
+						//putText(img_8u3c, to_string(approx ) + "%", Point(10,80), FONT_HERSHEY_DUPLEX, 1, Scalar(0, 255, 0), 2);
+
+						//waitKey(100000);
+					}
+
+				}
+
+				ellipses_to_test.clear();
+
+
+				n_frame_ref++;
+			}
 		}
 
 		//imshow("mask", filtered_mask_8u);
@@ -379,7 +472,26 @@ int main()
 
 		putText(img_8u3c, to_string(n_frame), Point(10, 40), FONT_HERSHEY_DUPLEX, 1, Scalar(0, 255, 0), 2);
 		imshow("final", img_8u3c);
-		waitKey(10000000);
+		//waitKey(10000000);
+
+		//Gravacao
+		if (n_frame > 80){
+
+			if (VIDEO && n_frame < 850 || n_frame > 1550)
+			{
+				if (n_frame < 2820 || n_frame > 4300)
+				{
+					if (n_frame < 5400)
+						video.write(img_8u3c);
+				}
+			}
+		}
+
+
+		if (VIBE && n_frame == 900)
+		{
+			showAllBackgrounds();
+		}
 
 		switch (waitKey(1))	{
 		case ESC_KEY:

@@ -4,7 +4,7 @@
 
 
 // Use 11 for TCC, ~5 for Sanin
-#define TEXTURE_WINDOW_WIDTH 11
+#define TEXTURE_WINDOW_WIDTH 5
 
 using namespace std;
 using namespace cv;
@@ -18,6 +18,9 @@ bool testTextureAvgDiff(Mat& in, Mat& avgDiff);
 
 void computeWindowAvgDiff(Mat& deltaP, Mat& windowAvgDiff);
 void countNonZeroInRows(Mat& in, Mat& out, int width);
+
+void dumbComputeWindowAvgDiff(Mat& input, Mat& output);
+
 
 Mat takeCandidateCoords(Mat& mask);
 Mat takeForegroundCoords(Mat& mask);

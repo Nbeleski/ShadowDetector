@@ -25,8 +25,9 @@
 #define INTERVAL 25
 #define SAMPLES 11
 
-#define COMPARE 1
+#define COMPARE 0
 #define VIBE 0
+#define VIDEO 1
 
 using namespace std;
 using namespace cv;

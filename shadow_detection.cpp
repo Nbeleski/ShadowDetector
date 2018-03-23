@@ -1,14 +1,18 @@
 #include "shadow_detection.h"
 #include "iostream"
 
-#define WIDTH 960
-#define HEIGHT 540
+#define WIDTH 960 //960
+#define HEIGHT 540 //540
 
-#define TEXTURE_TEST_THRESHOLD 0.5f
+#define TEXTURE_TEST_THRESHOLD 0.5f //0.5f default
 
 #define FIT_ELLIPSE true
 #define ELLIPSE_REFINE_ITERATIONS 4
 #define MAGICAL_VALUE 2.2
+
+
+Mat dumbAvg(Size(WIDTH, HEIGHT), CV_32FC1);
+Mat fix_edge(Size(WIDTH, HEIGHT), CV_8UC1);
 
 Mat deltaP(Size(WIDTH, HEIGHT), CV_32FC1);
 Mat windowAvgDiff(Size(WIDTH, HEIGHT), CV_32FC1);
@@ -76,6 +80,41 @@ bool testGradient(float img_mag, float img_ori, float bg_mag, float bg_ori)
 	}
 
 	return (true);
+}
+
+void dumbComputeWindowAvgDiff(Mat& input, Mat& output)
+{
+	Size s = input.size();
+	int rows = s.height;
+	int cols = s.width;
+
+	int k = 11; //tamanho da janela
+	float sum = 0;
+	int non_zeroes = 0;
+
+	for (int r = k / 2; r < rows - k / 2; ++r)
+	{
+		for (int c = k / 2; c < cols - k / 2; ++c)
+		{
+			sum = 0;
+			non_zeroes = 1;
+			// FOR ALL PIXELS: 
+			for (int j = -k / 2; j < k / 2; ++j)
+			{
+				for (int i = -k / 2; i < k / 2; ++i)
+				{
+
+					sum += input.at<float>(r + j, c + i);
+					if (input.at<float>(r + j, c + i) > 0)
+						non_zeroes++;
+				}
+			}
+
+			//output.at<float>(r, c) = sum / (k * k);
+			output.at<float>(r, c) = sum / 11;
+
+		}
+	}
 }
 
 void computeDeltaP(Mat& img_dx, Mat& img_dy, Mat& img_mag, Mat& img_ori, Mat& bg_dx, Mat& bg_dy, Mat& bg_mag, Mat& bg_ori, Mat& out)
@@ -418,7 +457,24 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 	int cols = s.width;
 
 	computeDeltaP(img_dx, img_dy, img_mag, img_ori, bg_dx, bg_dy, bg_mag, bg_ori, Mat(deltaP, roi));
+
+
+	//imshow("dx", img_dx);
+	//imshow("dy", img_dy);
+	//imshow("mag", img_mag);
+	//imshow("ori", img_ori);
+	//imshow("Delta P", Mat(deltaP, roi));
+
 	computeWindowAvgDiff(Mat(deltaP, roi), Mat(windowAvgDiff, roi));
+	dumbComputeWindowAvgDiff(Mat(deltaP, roi), Mat(dumbAvg, roi));
+	
+	Mat diffe; Mat maskCopy; mask.copyTo(maskCopy);
+	absdiff(dumbAvg, windowAvgDiff, diffe);
+	//imshow("diffe", Mat(diffe, roi));
+
+	//imshow("window avg", Mat(windowAvgDiff, roi));
+	//imshow("dumb avg", Mat(dumbAvg, roi));
+	//waitKey(1000000000);
 
 	// Saida temporaria
 	//Mat output(Size(WIDTH, HEIGHT), CV_8UC1);
@@ -440,8 +496,8 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 				if (testLab(src.at<Vec3b>(j, i), bg.at<Vec3b>(j, i)))
 				{
 					//delete below
-					//mask.at<uchar>(j, i) = 255;
-					//continue;
+					mask.at<uchar>(j, i) = 150;
+					continue;
 					//delete above
 
 					// Should be a gradient magnitude test here
@@ -450,7 +506,12 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 						
 
 						// Compare with the average orientantion difference
+						//if (windowAvgDiff.at<float>(j + roi.tl().y, i + roi.tl().x) < 0.05f)
+
 						if (windowAvgDiff.at<float>(j + roi.tl().y, i + roi.tl().x) < 0.05f)
+							maskCopy.at<uchar>(j, i) = 150;
+
+						if (dumbAvg.at<float>(j + roi.tl().y, i + roi.tl().x) < 0.1f)
 							mask.at<uchar>(j, i) = 150;					
 
 					}
@@ -462,11 +523,35 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 	mask.copyTo(output(roi)); // copy to output at position roi
 
 	imshow("before refine", mask);
-	//char next = waitKey(100000);
-	//if (next == 97)
-	//{
-	//	imwrite("RENOMEAR.jpg", mask);
-	//}
+	imshow("USANDO AVGWINDOW OLD", maskCopy);
+
+	Mat hold_gray;
+	threshold(mask, hold_gray, 0, 150, THRESH_BINARY);
+	threshold(mask, fix_edge, 151, 255, THRESH_BINARY);
+
+	imshow("fix edge", fix_edge);
+
+	Size ss = fix_edge.size();
+	Rect lower_half = Rect(0, (ss.height * 2 / 3), ss.width, ss.height / 3);
+
+	erode(Mat(fix_edge, lower_half), Mat(fix_edge, lower_half), getStructuringElement(MORPH_RECT, Size(9, 9)));
+
+	//morphologyEx(fix_edge, fix_edge, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(3, 3)));
+
+	dilate(fix_edge, fix_edge, getStructuringElement(MORPH_RECT, Size(5, 5)));
+	
+	add(hold_gray, fix_edge, fix_edge);
+
+	imshow("morph edge", fix_edge);
+
+	fix_edge.copyTo(output(roi));
+
+	/*char next = waitKey(100000);
+	switch (next)	{
+	case 27:
+		imwrite("RENAME.jpg", fix_edge);
+	}
+*/
 	
 	// Refine using ellipse
 	RotatedRect r;
@@ -474,7 +559,7 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 	{
 		r = refineEllipse(Mat(output, roi), mask); //r = refineEllipse(Mat(outpur, roi), mask)
 
-		dilate(output, output, getStructuringElement(cv::MORPH_ELLIPSE, Size(5, 5)));
+		//dilate(output, output, getStructuringElement(cv::MORPH_ELLIPSE, Size(5, 5)));
 
 		/*Point2f vtx[4];
 		r.points(vtx);
@@ -484,9 +569,11 @@ RotatedRect detectShadows(Mat original, Mat src, Mat bg, Mat& mask, Mat& img_dx,
 		ellipse(original, r, Scalar(0, 255, 0), 2);*/
 	}
 
+	//imshow("after refine", Mat(output, roi));
+	//waitKey(1000000);
+
 	return r;
 
-	imshow("after refine", Mat(output, roi));
 	//waitKey(10000000);
 }
 

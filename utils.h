@@ -2,9 +2,11 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/video/tracking.hpp"
 
-#define MIN_PIXELS 1000
-#define MIN_W 50
-#define MIN_H 50
+// default 1000, 50, 50, 4
+
+#define MIN_PIXELS 2500
+#define MIN_W 100
+#define MIN_H 100
 #define BLOB_MARGIN 4
 
 #define CANDIDATE_FG_VALUE 10

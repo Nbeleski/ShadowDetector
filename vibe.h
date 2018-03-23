@@ -18,3 +18,5 @@ int getRandNeighbourI(int i);
 
 void initBackground(Mat src);
 void vibe(Mat src, Mat& dst);
+
+void showAllBackgrounds();
